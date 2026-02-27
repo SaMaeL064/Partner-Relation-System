@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>Annual Verification</title>
+  
+  <!-- SheetJS for Import Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/ all.min.css" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- CSV Parser -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+  <!-- Flatpickr CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+
+  <?!= include('_Styles'); ?>
+  <style>
+    /* Custom Badges for Groups */
+    .badge-group-A { background-color: #198754; color: white; } 
+    .badge-group-fired { background-color: #dc3545; color: white; } 
+    .badge-group-default { background-color: #6c757d; color: white; }
+    .badge-import-new { background-color: #0d6efd; color: white; margin-left: 5px; font-size: 0.7rem; }
+    .badge-import-update { background-color: #fd7e14; color: white; margin-left: 5px; font-size: 0.7rem; }
+    .note-input { border: 1px solid #e9ecef; border-radius: 20px; padding: 4px 10px; font-size: 0.85rem; min-width: 200px; background-color: #f8f9fa; }
+    .note-input:focus { border-color: var(--ci-primary); outline: none; background-color: #fff; }
+    
+    /* Status Cards (Interactive) */
+    .status-card { 
+        transition: all 0.2s ease; 
+        cursor: pointer; 
+        border: 0; 
+        box-shadow: 0 2px 6px rgba(0,0,0,0.02); 
+        background: #fff; 
+        border-radius: 12px; 
+        position: relative;
+    }
+    .status-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.08); }
+    .status-card h3 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0; }
+    .status-icon { opacity: 0.3; font-size: 1.5rem; }
+    
+    /* Card Active State */
+    .status-card.active { 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+        background-color: #f8fcfd;
+        transform: translateY(-2px);
+    }
+    /* Active Borders */
+    .status-card.active.border-start-primary { border: 2px solid var(--ci-primary) !important; }
+    .status-card.active.border-start-success { border: 2px solid #198754 !important; }
+    .status-card.active.border-start-info { border: 2px solid #0dcaf0 !important; }
+    .status-card.active.border-start-warning { border: 2px solid #ffc107 !important; }
+    .status-card.active.border-start-danger { border: 2px solid #dc3545 !important; }
+
+    .border-start-primary { border-left: 4px solid var(--ci-primary) !important; }
+    .border-start-success { border-left: 4px solid #198754 !important; }
+    .border-start-info { border-left: 4px solid #0dcaf0 !important; }
+    .border-start-warning { border-left: 4px solid #ffc107 !important; }
+    .border-start-danger { border-left: 4px solid #dc3545 !important; }
+    
+    .text-primary-theme { color: var(--ci-primary) !important; }
+
+    /* Styling for highlighted recently updated rows */
+    .row-updated {
+        background-color: #d1e7dd !important; /* Success light */
+        transition: background-color 2s ease;
+    }
+    #bulkUploadStatusFile { display: none; }
+  </style>
+</head>
+<body>
+
+  <?!= include('_Sidebar'); ?>
+
+  <div class="main-content">
+    <?!= include('_Navbar'); ?>
+    
+    <div class="container-fluid">
+        <!-- Header (Minimal: Buttons Only) -->
+        <div class="d-flex justify-content-end align-items-center mb-4">
+            <div class="d-flex gap-2">
+                <!-- Bulk Update History Button -->
+                <button class="btn btn-outline-secondary rounded-pill px-3 shadow-sm fw-bold" onclick="viewHistory()">
+                    <i class="fas fa-history me-1"></i> ประวัติอัปเดตสถานะ
+                </button>
+                <button class="btn btn-soft-primary rounded-pill px-3 shadow-sm" onclick="openExportModal()">
+                    <i class="fas fa-file-export me-1"></i> Export CSV
+                </button>
+                <button class="btn btn-soft-success rounded-pill px-3 shadow-sm" onclick="exportAnnualReport()">
+                    <i class="fas fa-file-excel me-1"></i> Report
+                </button>
+            </div>
+        </div>
+        
+        <!-- Last Import Status -->
+        <div id="lastImportDisplay" class="text-secondary small fw-bold mb-3 text-end" style="font-size: 0.75rem;"></div>
+
+        <!-- 🌟 Status Cards (Workflow Tabs) 🌟 -->
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-3 mb-4">
+          <div class="col">
+            <div class="card status-card shadow-sm border-start-primary p-3 active" id="card-total" onclick="filterBySummary('total')">
+              <small class="text-muted fw-bold text-uppercase" style="font-size: 0.7rem;">ทั้งหมดในเดือนนี้</small>
+              <div class="d-flex justify-content-between align-items-center mt-2">
+                <h3 class="text-primary-theme" id="countTotal">0</h3>
+                <i class="fas fa-users status-icon text-primary"></i>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card status-card shadow-sm border-start-success p-3" id="card-verified" onclick="filterBySummary('verified')">
+              <small class="text-muted fw-bold text-uppercase" style="font-size: 0.7rem;">ผลออกแล้ว (เดือนนี้)</small>
+              <div class="d-flex justify-content-between align-items-center mt-2">
+                <h3 class="text-success" id="countVerified">0</h3>
+                <i class="fas fa-check-circle status-icon text-success"></i>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card status-card shadow-sm border-start-info p-3" id="card-link-sent" onclick="filterBySummary('link_sent')">
+              <small class="text-muted fw-bold text-uppercase" style="font-size: 0.7rem;">ส่งลิงค์แล้ว (ทุกเดือน)</small>
+              <div class="d-flex justify-content-between align-items-center mt-2">
+                <h3 class="text-info" id="countLinkSent">0</h3>
+                <i class="fas fa-paper-plane status-icon text-info"></i>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card status-card shadow-sm border-start-warning p-3" id="card-paid" onclick="filterBySummary('paid')">
+              <small class="text-muted fw-bold text-uppercase" style="font-size: 0.7rem;">ชำระครบ (เดือนนี้)</small>
+              <div class="d-flex justify-content-between align-items-center mt-2">
+                <h3 class="text-warning" id="countPaid">0</h3>
+                <i class="fas fa-money-bill-wave status-icon text-warning"></i>
+              </div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="card status-card shadow-sm border-start-danger p-3" id="card-unpaid" onclick="filterBySummary('unpaid')">
+               <small class="text-muted fw-bold text-uppercase" style="font-size: 0.7rem;">ค้างชำระ (ทุกเดือน)</small>
+              <div class="d-flex justify-content-between align-items-center mt-2">
+                <h3 class="text-danger" id="countUnpaid">0</h3>
+                <i class="fas fa-exclamation-circle status-icon text-danger"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Controls Card -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
+                  <div class="col-md-3">
+                    <label class="form-label small text-muted fw-bold">เดือนที่ตรวจสอบ</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="far fa-calendar-alt text-primary"></i></span>
+                        <input type="text" class="form-control border-start-0 ps-0" id="monthFilter" placeholder="เลือกเดือน..." readonly>
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small text-muted fw-bold">ค้นหา</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" class="form-control border-start-0 ps-0" id="searchInput" placeholder="ชื่อ, รหัส, เลขบัตร..." onkeyup="filterTable()">
+                    </div>
+                  </div>
+                  <div class="col-md-6 text-end">
+                    <div class="d-flex gap-2 justify-content-end flex-wrap">
+                        <input type="file" id="importFile" accept=".xlsx, .xls, .csv" style="display:none;" onchange="handleFileSelect(this)">
+                        
+                        <!-- Bulk Status Update File Input -->
+                        <input type="file" id="bulkUploadStatusFile" accept=".xlsx, .xls, .csv" style="display:none;" onchange="handleBulkUpload(event)">
+                        
+                        <button class="btn btn-success text-white rounded-pill shadow-sm fw-bold" onclick="document.getElementById('bulkUploadStatusFile').click()" title="อัปเดตเฉพาะสถานะ (CSV/Excel 2 คอลัมน์)">
+                          <i class="fas fa-file-upload me-1"></i> อัปเดตผลตรวจ (Excel)
+                        </button>
+                        
+                        <button class="btn btn-info text-white rounded-pill shadow-sm" onclick="document.getElementById('importFile').click()" title="นำเข้าข้อมูลทั้งหมดจากระบบ">
+                          <i class="fas fa-file-import me-1"></i> แนบรายการการหักเงินตรวจประวัติรายปี
+                        </button>
+                        <button class="btn btn-primary-theme rounded-pill shadow-sm" onclick="openAddModal()">
+                          <i class="fas fa-plus me-1"></i> เพิ่มรายการ
+                        </button>
+                    </div>
+                  </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Pills -->
+        <div class="d-flex gap-3 flex-wrap mb-4 align-items-stretch">
+            <div class="card flex-grow-1 border-0 shadow-sm" style="min-width: 250px;">
+                 <div class="card-body p-2 d-flex align-items-center justify-content-between">
+                     <span class="small fw-bold text-muted ms-2 text-nowrap"><i class="fas fa-history me-1"></i> ผลการนำเข้า</span>
+                     <div class="btn-group btn-group-sm ms-2" role="group">
+                        <input type="radio" class="btn-check" name="importFilter" id="btnImportAll" autocomplete="off" checked onchange="filterTable()">
+                        <label class="btn btn-outline-secondary border-0 rounded-pill me-1 px-3" for="btnImportAll">ทั้งหมด</label>
+                        
+                        <input type="radio" class="btn-check" name="importFilter" id="btnImportNew" autocomplete="off" onchange="filterTable()">
+                        <label class="btn btn-outline-primary border-0 rounded-pill me-1 px-3" for="btnImportNew" id="lblImportNew">ใหม่</label>
+                        
+                        <input type="radio" class="btn-check" name="importFilter" id="btnImportUpdated" autocomplete="off" onchange="filterTable()">
+                        <label class="btn btn-outline-warning text-dark border-0 rounded-pill px-3" for="btnImportUpdated" id="lblImportUpdated">อัปเดต</label>
+                     </div>
+                 </div>
+            </div>
+
+            <div class="card border-0 shadow-sm" style="min-width: 180px;">
+                 <div class="card-body p-2 d-flex align-items-center gap-2">
+                     <span class="small fw-bold text-muted ms-2 text-nowrap"><i class="fas fa-users me-1"></i> กลุ่ม</span>
+                     <select class="form-select form-select-sm border-0 bg-transparent fw-bold text-primary" id="groupFilter" onchange="filterTable()">
+                        <option value="">ทั้งหมด</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="H">H</option>
+                        <option value="ถูกปลดแล้ว">ถูกปลดแล้ว</option>
+                     </select>
+                 </div>
+            </div>
+
+            <div class="card border-0 shadow-sm" style="min-width: 200px;">
+                 <div class="card-body p-2 d-flex align-items-center gap-2">
+                     <span class="small fw-bold text-muted ms-2 text-nowrap"><i class="fas fa-money-bill-wave me-1"></i> การชำระ</span>
+                     <select class="form-select form-select-sm border-0 bg-transparent fw-bold text-success" id="deductionFilter" onchange="filterTable()">
+                        <option value="all">ทั้งหมด</option>
+                        <option value="paid">ชำระครบ</option>
+                        <option value="outstanding">ค้างชำระ</option>
+                     </select>
+                 </div>
+            </div>
+        </div>
+
+        <!-- 🌟 Table (Reduced Columns for Payment Info) 🌟 -->
+        <div class="table-container">
+          <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th class="text-center">#</th>
+                    <th>รหัส</th>
+                    <th>ชื่อ-นามสกุล</th>
+                    <th class="text-center">กลุ่ม</th>
+                    <th>เลขบัตร</th>
+                    <th>เบอร์โทร</th>
+                    <th>ยินยอมฯ</th>
+                    <!-- 🌟 รวม 3 คอลัมน์ (ยอดเงิน, ค้างชำระ, สถานะหัก) ไว้ที่นี่ 🌟 -->
+                    <th style="min-width: 150px;">ข้อมูลการชำระ</th>
+                    <th>ช่องทาง</th>
+                    <th>สถานะ</th>
+                    <th>วันรับผล</th>
+                    <th class="text-center bg-warning bg-opacity-10 border-warning">ผลตรวจ</th>
+                    <th style="min-width: 250px;">หมายเหตุ (แก้ไขได้)</th>
+                    <th class="text-center">Export</th>
+                    <th class="text-center">จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+              </table>
+          </div>
+          <div id="noData" class="text-center py-5 text-muted" style="display:none;">
+              <i class="fas fa-inbox fa-3x mb-3 opacity-25"></i><br>ไม่พบข้อมูล
+          </div>
+        </div>
+    </div>
+  </div>
+
+  <!-- Modal: Add/Edit Annual -->
+  <div class="modal fade" id="formModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-white border-bottom-0 pb-0">
+          <h5 class="modal-title fw-bold text-primary" id="modalTitle">บันทึกตรวจประวัติรายปี</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body pt-3">
+          
+          <div id="searchSection" class="mb-4 p-3 bg-light rounded border border-primary border-opacity-25">
+             <label class="form-label fw-bold text-primary"><i class="fas fa-search me-1"></i> ค้นหาผู้ให้บริการ</label>
+             <div class="input-group">
+                <input class="form-control" list="providerOptions" id="searchProviderInput" placeholder="พิมพ์รหัส / ชื่อ / เลขบัตร เพื่อค้นหา..." onchange="onProviderSelect()">
+                <datalist id="providerOptions"></datalist>
+                <button class="btn btn-outline-secondary" onclick="document.getElementById('searchProviderInput').value='';" type="button">Clear</button>
+             </div>
+             <small class="text-muted ms-1">ระบบจะดึงข้อมูลให้อัตโนมัติเมื่อเลือกรายการ</small>
+          </div>
+
+          <form id="dataForm">
+            <input type="hidden" id="recordId">
+            <div class="row g-3 mb-4">
+               <div class="col-md-3"><label class="form-label small fw-bold text-muted">รหัสคุณแม่บ้าน</label><input type="text" class="form-control bg-light" id="refCode"></div>
+               <div class="col-md-5"><label class="form-label small fw-bold text-muted">ชื่อคุณแม่บ้าน <span class="text-danger">*</span></label><input type="text" class="form-control fw-bold bg-light" id="name" required></div>
+               <div class="col-md-4"><label class="form-label small fw-bold text-muted">กลุ่ม (Group) <span class="text-danger">*</span></label>
+                  <select class="form-select" id="group" required>
+                      <option value="" selected disabled>เลือกกลุ่ม...</option>
+                      <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="H">H</option>
+                      <option value="ถูกปลดแล้ว">ถูกปลดแล้ว</option>
+                  </select>
+               </div>
+               <div class="col-md-4"><label class="form-label small fw-bold text-muted">เลขที่บัตรประชาชน</label><input type="text" class="form-control" id="idCard" maxlength="13"></div>
+               <div class="col-md-4"><label class="form-label small fw-bold text-muted">วันเกิด</label><input type="text" class="form-control datepicker" id="birthDate"></div>
+               <div class="col-md-4"><label class="form-label small fw-bold text-muted">เบอร์โทร</label><input type="text" class="form-control" id="phone"></div>
+            </div>
+
+            <div class="p-3 bg-light rounded mb-4 border">
+                <h6 class="text-secondary fw-bold mb-3">ข้อมูลการชำระเงิน</h6>
+                <div class="row g-3">
+                   <div class="col-md-3"><label class="form-label small">ยินยอมให้หักเงิน?</label>
+                      <select class="form-select" id="consentStatus">
+                          <option value="">- ระบุ -</option><option value="ยินยอม">ยินยอม</option><option value="ไม่ยินยอม">ไม่ยินยอม</option><option value="รอตรวจสอบ">รอตรวจสอบ</option>
+                      </select>
+                   </div>
+                   <div class="col-md-3"><label class="form-label small">ยอดเงินตรวจ</label><input type="number" class="form-control" id="amount" placeholder="0.00"></div>
+                   <div class="col-md-3"><label class="form-label small text-danger">ยอดค้างชำระ</label><input type="number" class="form-control border-danger" id="outstanding" placeholder="0.00"></div>
+                   <div class="col-md-3"><label class="form-label small">สถานะการหักเงิน</label>
+                      <select class="form-select fw-bold" id="deductionStatus">
+                          <option value="">- ระบุ -</option><option value="ชำระครบ">ชำระครบ</option><option value="ค้างชำระ">ค้างชำระ</option>
+                          <option value="หักสำเร็จ">หักสำเร็จ</option><option value="หักไม่สำเร็จ">หักไม่สำเร็จ</option><option value="รอหัก">รอหัก</option>
+                      </select>
+                   </div>
+                </div>
+            </div>
+
+            <div class="row g-3">
+               <div class="col-md-4"><label class="form-label small fw-bold text-muted">ช่องทางการตรวจ</label>
+                  <select class="form-select" id="channel" onchange="updateStatusOptions()">
+                      <option value="" selected disabled>เลือกช่องทาง...</option>
+                      <option value="App Man">App Man</option><option value="ตรวจเอง">ตรวจเอง</option>
+                  </select>
+               </div>
+               <div class="col-md-4"><label class="form-label small fw-bold text-muted">สถานะการส่งตรวจ</label>
+                  <select class="form-select" id="statusProcess"><option value="" selected disabled>กรุณาเลือกช่องทางก่อน...</option></select>
+               </div>
+               <div class="col-md-4"><label class="form-label small fw-bold text-muted">วันที่รับผล</label><input type="text" class="form-control datepicker" id="resultDate"></div>
+               <!-- 🌟 เพิ่ม onchange event เพื่อปรับสถานะและวันที่รับผลอัตโนมัติ -->
+               <div class="col-md-4"><label class="form-label small fw-bold text-muted">ผลตรวจ</label><input type="text" class="form-control bg-light" id="result" onchange="autoUpdateResultStatus()"></div>
+               <div class="col-md-8"><label class="form-label small fw-bold text-muted">หมายเหตุ</label><textarea class="form-control" id="note" rows="1" placeholder="ระบุหมายเหตุ..."></textarea></div>
+               <div class="d-none"><input type="text" id="officerEmail"><input type="text" class="form-control datepicker" id="submitDate"></div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer border-top-0 bg-white">
+          <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">ปิด</button>
+          <button type="button" class="btn btn-primary-theme rounded-pill px-4 fw-bold shadow-sm" onclick="saveData()">บันทึกข้อมูล</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🌟 Upload Result Modal (ตารางใบเสร็จพร้อมทำงาน) 🌟 -->
+  <div class="modal fade" id="uploadResultModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-dark text-white border-bottom-0">
+          <h5 class="modal-title fw-bold"><i class="fas fa-clipboard-check me-2"></i>สรุปผลการอัปเดตสถานะ (จากไฟล์)</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-0">
+            <div class="d-flex bg-light p-3 border-bottom justify-content-around">
+                <div class="text-center"><h3 class="text-success fw-bold mb-0" id="resSuccessCount">0</h3><small class="text-muted fw-bold">อัปเดตสำเร็จ</small></div>
+                <div class="text-center"><h3 class="text-danger fw-bold mb-0" id="resFailedCount">0</h3><small class="text-muted fw-bold">ไม่สำเร็จ / หาไม่พบ</small></div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">เลขบัตร ปชช. (จากไฟล์)</th>
+                            <th>ชื่อ-นามสกุล (อ้างอิงจากระบบ)</th>
+                            <th>สถานะใหม่</th>
+                            <th>ผลการทำงาน</th>
+                            <th class="text-center pe-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="uploadResultTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer bg-light border-top-0">
+            <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">ปิดหน้าต่าง</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Modal -->
+  <div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0">
+        <div class="modal-header border-0 pb-0"><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body text-center pb-5 pt-0">
+          <div class="mb-3 text-primary"><i class="fas fa-file-csv fa-3x"></i></div>
+          <h4>Export CSV</h4>
+          <p class="text-muted">รายการที่จะ Export ต้องมีสถานะ "ผลตรวจออกแล้ว"</p>
+          <p class="small mb-4 text-primary fw-bold" id="exportYearDisplay"></p>
+          <div class="d-grid gap-2 col-10 mx-auto">
+            <button class="btn btn-success p-3 text-start shadow-sm border-0" onclick="previewExport('ALL')">
+              <div class="d-flex justify-content-between align-items-center"><span><i class="fas fa-check-circle me-2"></i> Export ผลตรวจที่ออกแล้ว</span><i class="fas fa-download"></i></div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview Modal -->
+  <div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-light"><h5 class="modal-title">ตรวจสอบรายการ Export (รายปี)</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body"><table class="table table-sm table-bordered"><thead class="table-light"><tr><th>Code</th><th>ชื่อ-นามสกุล</th><th>เลขบัตร</th><th>สถานะ</th></tr></thead><tbody id="previewTableBody"></tbody></table></div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button><button type="button" class="btn btn-primary-theme" id="confirmExportBtn" onclick="confirmExport()">ยืนยัน Download CSV</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History Modal (Table Format) -->
+  <div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow-lg">
+        <div class="modal-header bg-light border-bottom-0">
+          <h5 class="modal-title fw-bold text-secondary"><i class="fas fa-history me-2"></i>ประวัติการอัปเดตสถานะจากไฟล์</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="20%" class="ps-4">วัน/เวลาที่อัปเดต</th>
+                            <th width="25%">ชื่อไฟล์อ้างอิง</th>
+                            <th width="20%">ผู้ทำรายการ</th>
+                            <th width="10%" class="text-center">สำเร็จ</th>
+                            <th width="10%" class="text-center">ล้มเหลว</th>
+                            <th width="15%" class="text-center pe-4">รายละเอียด</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer bg-light border-top-0">
+            <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">ปิดหน้าต่าง</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <?!= include('_Scripts'); ?>
+  <script>
+    let globalData = [], providerList = [], resultList = [], ftStatusList = [];
+    let currentUser = "", isUserAdmin = false;
+    let formModal, exportModal, previewModal, monthPickerInstance;
+    let currentExportType = "", lastImportAdded = [], lastImportUpdated = [];
+    let currentSummaryFilter = 'total'; 
+    let recentlyUpdatedIds = [];
+    let historyModal;
+
+    window.onload = function() {
+        formModal = new bootstrap.Modal(document.getElementById('formModal'));
+        exportModal = new bootstrap.Modal(document.getElementById('exportModal'));
+        previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
+        historyModal = new bootstrap.Modal(document.getElementById('historyModal'));
+        
+        if(document.getElementById('pageTitle')) document.getElementById('pageTitle').textContent = "ระบบตรวจประวัติรายปี";
+        if(document.getElementById('pageSubtitle')) document.getElementById('pageSubtitle').textContent = "Annual Verification";
+
+        flatpickr(".datepicker", { dateFormat: "Y-m-d", altInput: true, altFormat: "j F Y", locale: "th" });
+        const today = new Date();
+        monthPickerInstance = flatpickr("#monthFilter", {
+          plugins: [ new monthSelectPlugin({ shorthand: true, dateFormat: "Y-m", altFormat: "F Y", theme: "light" }) ],
+          locale: "th", defaultDate: today,
+          onChange: function() { loadData(); }
+        });
+        
+        loadData(); loadProviderOptions(); loadLastImportInfo();
+        
+        google.script.run.withSuccessHandler(res => { 
+            isUserAdmin = res.isAdmin;
+            if(isUserAdmin && document.getElementById('nav-config')) {
+                document.getElementById('nav-config').classList.remove('d-none');
+            }
+        }).getClientConfig();
+    };
+
+    function loadLastImportInfo() { google.script.run.withSuccessHandler(msg => { if(msg) document.getElementById('lastImportDisplay').innerHTML = `<i class="fas fa-history me-1"></i>นำเข้าล่าสุด: ${msg}`; }).getLastImportLog(); }
+    function excelDateToJSDate(serial) { if (!serial) return ""; if (typeof serial === 'string' && serial.includes('-')) return serial; if (isNaN(serial)) return serial; let date = new Date((serial - (25567 + 2)) * 86400 * 1000); return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2,'0')}-${date.getDate().toString().padStart(2,'0')}`; }
+    
+    function handleFileSelect(input) {
+      if (!input.files || input.files.length === 0) return;
+      const file = input.files[0];
+      const thaiMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+      const currentMonth = new Date().getMonth(); const currentYear = new Date().getFullYear();
+      let monthOpts = ""; thaiMonths.forEach((m, i) => { monthOpts += `<option value="${i+1}" ${i===currentMonth?'selected':''}>${m}</option>`; });
+      let yearOpts = ""; for(let y=currentYear-1; y<=currentYear+1; y++) { yearOpts += `<option value="${y}" ${y===currentYear?'selected':''}>${y+543}</option>`; }
+      Swal.fire({
+          title: 'ระบุเดือน/ปี สำหรับข้อมูลชุดนี้', html: `<div class="d-flex gap-2 justify-content-center"><select id="swal-month" class="form-select">${monthOpts}</select><select id="swal-year" class="form-select">${yearOpts}</select></div>`,
+          showCancelButton: true, confirmButtonText: 'นำเข้า', cancelButtonText: 'ยกเลิก',
+          preConfirm: () => { const m = document.getElementById('swal-month').value.padStart(2, '0'); const y = document.getElementById('swal-year').value; return `${y}-${m}-01`; }
+      }).then((result) => { if (result.isConfirmed) { if(monthPickerInstance) monthPickerInstance.setDate(result.value); processFile(file, result.value); } else { input.value = ""; } });
+    }
+    
+    function processFile(file, selectedDate) {
+      const reader = new FileReader(); Swal.fire({ title: 'กำลังอ่านไฟล์...', text: 'กรุณารอสักครู่', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, { type: 'array' }); const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+        if (jsonData.length < 1) { showError('ไฟล์ไม่มีข้อมูล'); return; }
+        const records = [];
+        for(let i=1; i<jsonData.length; i++) {
+            const row = jsonData[i]; if(!row[0] && !row[3]) continue;
+            let outstandingVal = row[8]; let derivedDeductionStatus = "ค้างชำระ";
+            if (outstandingVal===undefined || outstandingVal===null || outstandingVal==="" || String(outstandingVal).trim()==="-" || Number(outstandingVal)===0) derivedDeductionStatus = "ชำระครบ";
+            records.push({ refCode: row[0]||"", name: row[1]||"", group: row[2]||"A", idCard: String(row[3]||""), birthDate: excelDateToJSDate(row[4]), phone: row[5]||"", consentStatus: row[6]||"", amount: row[7]||"", outstanding: row[8]||"", deductionStatus: derivedDeductionStatus, channel: row[10]||"App Man", statusProcess: row[11]||"ส่งลิ้งค์แล้วรอกรอกข้อมูล", resultDate: excelDateToJSDate(row[12]), result: row[13]||"", note: row[14] || "", officerEmail: currentUser, submitDate: selectedDate });
+        }
+        
+        google.script.run.withSuccessHandler(res => { 
+            if(res.success) { 
+                lastImportAdded = res.addedIds || []; 
+                lastImportUpdated = res.updatedIds || []; 
+                
+                let addedCount = res.added !== undefined ? res.added : lastImportAdded.length;
+                let updatedCount = res.updated !== undefined ? res.updated : lastImportUpdated.length;
+
+                const lblNew = document.getElementById('lblImportNew');
+                if (lblNew) lblNew.innerHTML = `ใหม่ <span class="badge bg-primary ms-1">${addedCount}</span>`;
+                const lblUpdated = document.getElementById('lblImportUpdated');
+                if (lblUpdated) lblUpdated.innerHTML = `อัปเดต <span class="badge bg-warning text-dark ms-1">${updatedCount}</span>`;
+
+                let htmlContent = `
+                    <div class="text-start mt-3">
+                        <div class="alert alert-info py-2 mb-2"><i class="fas fa-file-excel me-2"></i>อ่านข้อมูลจากไฟล์ได้: <b>${records.length}</b> รายการ</div>
+                        <div class="alert alert-primary py-2 mb-2"><i class="fas fa-plus-circle me-2"></i>เพิ่มรายชื่อใหม่: <b>${addedCount}</b> รายการ</div>
+                        <div class="alert alert-warning text-dark py-2 mb-0"><i class="fas fa-edit me-2"></i>อัปเดตข้อมูลเดิม: <b>${updatedCount}</b> รายการ</div>
+                    </div>
+                `;
+
+                Swal.fire({
+                    title: 'สรุปรายการการหักเงินตรวจประวัติรายปี',
+                    html: htmlContent,
+                    icon: 'success',
+                    confirmButtonText: 'ตกลง',
+                    confirmButtonColor: '#0d6efd'
+                });
+                
+                loadData(); 
+                loadLastImportInfo(); 
+            } else { 
+                showError(res.message); 
+            } 
+            document.getElementById('importFile').value = ""; 
+        }).importAnnualData(records, selectedDate);
+      }; reader.readAsArrayBuffer(file);
+    }
+    
+    function saveInlineNote(id, newNote) {
+        let finalNote = newNote.trim(); if (finalNote) { const now = new Date(); const timeStr = `(${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()+543} ${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')})`; if (!finalNote.includes('(')) finalNote = `${timeStr} ${finalNote}`; }
+        const btn = document.getElementById(`btn-save-${id}`); if(btn) { btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; btn.disabled = true; }
+        google.script.run.withSuccessHandler(() => { if(btn) { btn.innerHTML = '<i class="fas fa-check text-success"></i>'; setTimeout(() => { btn.innerHTML = '<i class="fas fa-save"></i>'; btn.disabled = false; }, 1000); } const row = globalData.find(r => r.id === id); if(row) row.note = finalNote; }).updateAnnualNote(id, finalNote);
+    }
+    
+    function loadData() {
+        showLoading();
+        google.script.run.withSuccessHandler(res => {
+            hideLoading(); globalData = res.data; resultList = res.results||[]; ftStatusList = res.ftStatuses||[]; currentUser = res.currentUser; isUserAdmin = res.isAdmin;
+            if(document.getElementById('userEmailDisplay')) document.getElementById('userEmailDisplay').textContent = currentUser;
+            
+            updateStats(); 
+            filterTable(); 
+        }).getAnnualData(document.getElementById('monthFilter').value);
+    }
+    
+    function updateStats() {
+        const total = globalData.length;
+        const verified = globalData.filter(x => x.statusProcess === 'ผลตรวจออกแล้ว').length;
+        const linkSent = globalData.filter(x => x.statusProcess === 'ส่งลิ้งค์แล้วรอกรอกข้อมูล').length; 
+        const paid = globalData.filter(x => x.deductionStatus === 'ชำระครบ' || x.deductionStatus === 'หักสำเร็จ').length;
+        const unpaid = globalData.filter(x => x.deductionStatus === 'ค้างชำระ' || x.deductionStatus === 'หักไม่สำเร็จ' || x.deductionStatus === 'รอหัก').length;
+
+        document.getElementById('countTotal').textContent = total;
+        document.getElementById('countVerified').textContent = verified;
+        document.getElementById('countLinkSent').textContent = linkSent;
+        document.getElementById('countPaid').textContent = paid;
+        document.getElementById('countUnpaid').textContent = unpaid;
+    }
+    
+    function filterBySummary(type) {
+        currentSummaryFilter = type;
+        updateActiveSummaryUI(type);
+        
+        if (type === 'link_sent' || type === 'unpaid') {
+            const monthVal = document.getElementById('monthFilter').value;
+            if (monthVal !== "") {
+                if(monthPickerInstance) monthPickerInstance.clear();
+                Swal.fire({
+                    title: 'ดึงข้อมูลที่ค้างทั้งหมด',
+                    text: 'ระบบกำลังดึงข้อมูลที่รอการจัดการจากทุกเดือน...',
+                    icon: 'info',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                loadData(); 
+                return;
+            }
+        }
+        filterTable();
+    }
+
+    function updateActiveSummaryUI(type) {
+        document.querySelectorAll('.status-card').forEach(el => el.classList.remove('active'));
+        const map = { 'total': 'card-total', 'verified': 'card-verified', 'link_sent': 'card-link-sent', 'paid': 'card-paid', 'unpaid': 'card-unpaid' };
+        const id = map[type];
+        if(id) {
+            const el = document.getElementById(id);
+            if(el) el.classList.add('active'); 
+        }
+    }
+
+    function renderTable(data) {
+        const tbody = document.getElementById('tableBody'); tbody.innerHTML = "";
+        if(data.length === 0) { document.getElementById('noData').style.display = 'block'; return; }
+        document.getElementById('noData').style.display = 'none';
+        data.forEach((row, index) => {
+            let tr = document.createElement('tr');
+            
+            if (recentlyUpdatedIds.includes(String(row.id))) {
+                tr.classList.add('row-updated');
+            }
+
+            let exportIcon = row.exportStatus ? '<i class="fas fa-file-export text-success fs-5"></i>' : '<span class="text-muted">-</span>';
+            
+            // 1. ข้อมูลการชำระที่ถูกรวมไว้ในคอลัมน์เดียว
+            let amount = row.amount ? Number(row.amount).toLocaleString() : '-';
+            let outstanding = row.outstanding ? Number(row.outstanding).toLocaleString() : '0';
+            let deductClass = 'bg-secondary';
+            if(row.deductionStatus==='ชำระครบ'||row.deductionStatus==='หักสำเร็จ') deductClass = 'bg-success';
+            else if(row.deductionStatus==='ค้างชำระ'||row.deductionStatus==='หักไม่สำเร็จ') deductClass = 'bg-danger';
+            else if(row.deductionStatus==='รอหัก') deductClass = 'bg-warning text-dark';
+            
+            let paymentHtml = `
+                <div class="small p-2 bg-light rounded border border-secondary-subtle">
+                    <div class="d-flex justify-content-between mb-1 border-bottom pb-1">
+                        <span class="text-muted">ยอดเงิน:</span> <span class="fw-bold">${amount}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">ค้างชำระ:</span> <span class="text-danger fw-bold">${outstanding}</span>
+                    </div>
+                    <div class="text-center"><span class="badge ${deductClass} w-100">${row.deductionStatus||'-'}</span></div>
+                </div>
+            `;
+
+            let groupBadge = row.group === 'A' ? 'badge-group-A' : (row.group === 'ถูกปลดแล้ว' ? 'badge-group-fired' : 'badge-group-default');
+            let cleanIdCard = (row.idCard || "").replace(/'/g, "").trim();
+            let importBadge = lastImportAdded.includes(cleanIdCard) ? `<span class="badge badge-import-new">NEW</span>` : (lastImportUpdated.includes(cleanIdCard) ? `<span class="badge badge-import-update">UPDATED</span>` : "");
+            let refCodeDisplay = row.refCode ? `<a href="#" class="badge bg-light text-primary border text-decoration-none">${row.refCode}</a>` : '-';
+            let deleteBtn = isUserAdmin ? `<button class="btn btn-sm btn-soft-danger ms-1" onclick="deleteItem('${row.id}')"><i class="fas fa-trash-alt"></i></button>` : '';
+            
+            // 🌟 สร้างป้าย Badge สำหรับคอลัมน์ผลตรวจ (ไฮไลท์ KYC ไม่ผ่าน เป็นสีแดง) 🌟
+            let resBadge = '<span class="text-muted">-</span>';
+            if (row.result) {
+                let rc = 'bg-secondary';
+                let rv = String(row.result).toLowerCase();
+                
+                if (rv.includes('not verified') || rv.includes('ไม่ผ่าน') || rv.includes('kyc ไม่ผ่าน') || rv.includes('kycไม่ผ่าน')) {
+                    rc = 'bg-danger';
+                } else if (rv.includes('verified') || rv.includes('ผ่าน') || rv.includes('ได้รับผลแล้ว') || rv.includes('อนุมัติโดยพนักงาน')) {
+                    rc = 'bg-success';
+                } else if (rv.includes('pending') || rv.includes('รอ')) {
+                    rc = 'bg-warning text-dark';
+                }
+                
+                resBadge = `<span class="badge ${rc} text-wrap" style="max-width: 120px; line-height: 1.4;">${row.result}</span>`;
+            }
+
+            tr.innerHTML = `
+                <td class="text-center align-top pt-3">${index + 1}</td>
+                <td class="fw-bold align-top pt-3">${refCodeDisplay}</td>
+                <td class="align-top pt-3">${row.name||'-'} ${importBadge}</td>
+                <td class="text-center align-top pt-3"><span class="badge ${groupBadge}">${row.group||'-'}</span></td>
+                <td class="font-monospace align-top pt-3">${row.idCard||'-'}</td>
+                <td class="align-top pt-3">${row.phone||'-'}</td>
+                <td class="align-top pt-3">${row.consentStatus||'-'}</td>
+                <td class="align-top pt-2">${paymentHtml}</td>
+                <td class="align-top pt-3"><span class="badge bg-light text-dark border">${row.channel||'-'}</span></td>
+                <td class="align-top pt-3">${row.statusProcess||'-'}</td>
+                <td class="align-top pt-3">${formatDate(row.resultDate)}</td>
+                <td class="text-center fw-bold align-top pt-3">${resBadge}</td>
+                <td style="min-width: 200px;" class="align-top pt-2">
+                    <div class="input-group input-group-sm"><input type="text" class="form-control note-input" value="${row.note||''}" id="note-${row.id}" onkeydown="if(event.key==='Enter') saveInlineNote('${row.id}', this.value)"><button class="btn btn-outline-secondary rounded-end" type="button" id="btn-save-${row.id}" onclick="saveInlineNote('${row.id}', document.getElementById('note-${row.id}').value)"><i class="fas fa-save"></i></button></div>
+                </td>
+                <td class="text-center align-top pt-3">${exportIcon}</td>
+                <td class="text-center align-top pt-3"><div class="d-flex justify-content-center align-items-center"><button class="btn btn-sm btn-soft-info" onclick='openEditModalById("${row.id}")'><i class="fas fa-edit"></i></button>${deleteBtn}</div></td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        if (recentlyUpdatedIds.length > 0) {
+            setTimeout(() => {
+                document.querySelectorAll('.row-updated').forEach(el => el.classList.remove('row-updated'));
+                recentlyUpdatedIds = []; 
+            }, 3000);
+        }
+    }
+
+    function filterTable() {
+        const txt = document.getElementById('searchInput').value.toLowerCase();
+        let importFilter = "all";
+        if (document.getElementById('btnImportNew').checked) importFilter = "new";
+        if (document.getElementById('btnImportUpdated').checked) importFilter = "updated";
+        const deductFilter = document.getElementById('deductionFilter').value;
+        const groupFilter = document.getElementById('groupFilter').value;
+        
+        const filtered = globalData.filter(x => {
+            const matchText = (x.name && x.name.toLowerCase().includes(txt)) || (x.refCode && x.refCode.toLowerCase().includes(txt)) || (x.idCard && x.idCard.includes(txt));
+            let matchImport = true;
+            let cleanId = (x.idCard || "").replace(/'/g, "").trim();
+            if (importFilter === "new") matchImport = lastImportAdded.includes(cleanId);
+            else if (importFilter === "updated") matchImport = lastImportUpdated.includes(cleanId);
+            let matchDeduct = true;
+            if (deductFilter === "paid") matchDeduct = (x.deductionStatus === "ชำระครบ");
+            else if (deductFilter === "outstanding") matchDeduct = (x.deductionStatus === "ค้างชำระ");
+            let matchGroup = true;
+            if (groupFilter !== "") matchGroup = (x.group === groupFilter);
+
+            let matchSummary = true;
+            if (currentSummaryFilter === 'verified') matchSummary = (x.statusProcess === 'ผลตรวจออกแล้ว');
+            else if (currentSummaryFilter === 'link_sent') matchSummary = (x.statusProcess === 'ส่งลิ้งค์แล้วรอกรอกข้อมูล');
+            else if (currentSummaryFilter === 'paid') matchSummary = (x.deductionStatus === 'ชำระครบ' || x.deductionStatus === 'หักสำเร็จ');
+            else if (currentSummaryFilter === 'unpaid') matchSummary = (x.deductionStatus === 'ค้างชำระ' || x.deductionStatus === 'หักไม่สำเร็จ' || x.deductionStatus === 'รอหัก');
+
+            return matchText && matchImport && matchDeduct && matchGroup && matchSummary;
+        });
+        renderTable(filtered);
+    }
+    
+    function openAddModal() { document.getElementById('dataForm').reset(); document.getElementById('recordId').value = ""; document.getElementById('modalTitle').textContent = "บันทึกข้อมูลใหม่ (รายปี)"; document.getElementById('searchSection').style.display = 'block'; document.getElementById('searchProviderInput').value = ""; document.getElementById('officerEmail').value = currentUser; document.getElementById('submitDate')._flatpickr.setDate(new Date()); updateStatusOptions(); formModal.show(); }
+    
+    function openEditModalById(id) {
+        const item = globalData.find(x => String(x.id) === String(id));
+        if(item) openEditModal(item);
+    }
+    
+    // 🌟 ฟังก์ชันสำหรับอัปเดตสถานะและวันที่เมื่อมีการแก้ไข "ผลตรวจ" แบบ Manual 🌟
+    function autoUpdateResultStatus() {
+        const resInput = document.getElementById('result').value.trim();
+        if (resInput.includes('ได้รับผลแล้ว') || resInput.includes('อนุมัติโดยพนักงาน')) {
+            document.getElementById('statusProcess').value = 'ผลตรวจออกแล้ว';
+            
+            // ลงวันที่ปัจจุบันในช่อง วันรับผล
+            const today = new Date();
+            const d = String(today.getDate()).padStart(2, '0');
+            const m = String(today.getMonth() + 1).padStart(2, '0');
+            const y = today.getFullYear();
+            setFlatpickrValue('resultDate', `${y}-${m}-${d}`);
+            
+            // แสดง Toast แจ้งเตือนสั้นๆ เพื่อให้แอดมินทราบ
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'info',
+                title: 'อัปเดตสถานะและวันที่รับผลอัตโนมัติแล้ว',
+                showConfirmButton: false,
+                timer: 3000
+            });
+        }
+    }
+    
+    function openEditModal(item) { document.getElementById('modalTitle').textContent = "แก้ไขข้อมูล"; document.getElementById('searchSection').style.display = 'none'; document.getElementById('recordId').value = item.id; document.getElementById('refCode').value = item.refCode; document.getElementById('name').value = item.name; document.getElementById('group').value = item.group; document.getElementById('idCard').value = item.idCard; setFlatpickrValue('birthDate', item.birthDate); document.getElementById('phone').value = item.phone; document.getElementById('consentStatus').value = (item.consentStatus||"").trim(); document.getElementById('amount').value = item.amount; document.getElementById('outstanding').value = item.outstanding; document.getElementById('deductionStatus').value = item.deductionStatus; document.getElementById('channel').value = item.channel; updateStatusOptions(); document.getElementById('statusProcess').value = item.statusProcess; setFlatpickrValue('resultDate', item.resultDate); document.getElementById('result').value = item.result || ""; document.getElementById('officerEmail').value = item.officerEmail; setFlatpickrValue('submitDate', item.submitDate); document.getElementById('note').value = item.note||""; formModal.show(); }
+    function updateStatusOptions() { const channel = document.getElementById('channel').value; const statusSelect = document.getElementById('statusProcess'); const currentVal = statusSelect.value; statusSelect.innerHTML = '<option value="" selected disabled>เลือกสถานะ...</option>'; let options = []; if (channel === 'App Man') { options = ['ส่งลิ้งค์แล้วรอกรอกข้อมูล', 'รอผลตรวจ', 'ผลตรวจออกแล้ว']; } else if (channel === 'ตรวจเอง') { options = ['รอส่งผลตรวจให้เรา(ตรวจเอง)', 'ผลตรวจออกแล้ว']; } options.forEach(opt => { statusSelect.add(new Option(opt, opt)); }); if(options.includes(currentVal)) statusSelect.value = currentVal; }
+    function saveData() { const rawNote = document.getElementById('note').value.trim(); let finalNote = rawNote; if (rawNote) { const now = new Date(); const timeStr = `(${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()+543} ${now.getHours()}:${now.getMinutes().toString().padStart(2,'0')})`; if (!rawNote.includes('(')) { finalNote = `${timeStr} ${rawNote}`; } } const form = { id: document.getElementById('recordId').value, refCode: document.getElementById('refCode').value, name: document.getElementById('name').value, group: document.getElementById('group').value, idCard: document.getElementById('idCard').value, birthDate: document.getElementById('birthDate').value, phone: document.getElementById('phone').value, consentStatus: document.getElementById('consentStatus').value, amount: document.getElementById('amount').value, outstanding: document.getElementById('outstanding').value, deductionStatus: document.getElementById('deductionStatus').value, channel: document.getElementById('channel').value, statusProcess: document.getElementById('statusProcess').value, resultDate: document.getElementById('resultDate').value, result: document.getElementById('result').value, lastFollowup: "", officerEmail: document.getElementById('officerEmail').value, submitDate: document.getElementById('submitDate').value, note: finalNote }; if(!form.name || !form.group) { Swal.fire('ข้อมูลไม่ครบ', 'กรุณากรอกชื่อและกลุ่ม', 'warning'); return; } Swal.showLoading(); google.script.run.withSuccessHandler(res => { if(res.success) { formModal.hide(); Swal.fire('สำเร็จ', 'บันทึกข้อมูลเรียบร้อย', 'success'); loadData(); } else { Swal.fire('Error', res.message, 'error'); } }).saveAnnualData(form); }
+    function deleteItem(id) { Swal.fire({ title: 'ยืนยันลบ?', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' }).then(res => { if(res.isConfirmed) { Swal.showLoading(); google.script.run.withSuccessHandler(() => { hideLoading(); Swal.fire('ลบแล้ว', '', 'success'); loadData(); }).deleteAnnualData(id); } }); }
+    function openExportModal() { const monthVal = document.getElementById('monthFilter').value; const dateObj = new Date(monthVal + '-01'); let displayText = "เดือน: " + monthVal; if(monthVal && !isNaN(dateObj.getTime())) displayText = "เดือน: " + dateObj.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' }); document.getElementById('exportYearDisplay').textContent = displayText; exportModal.show(); }
+    function previewExport(groupType) { currentExportType = groupType; const year = document.getElementById('monthFilter').value; Swal.showLoading(); google.script.run.withSuccessHandler(showPreviewModal).withFailureHandler(onFailure).exportAnnualCSV(groupType, year, true); }
+    function showPreviewModal(data) { Swal.close(); if (!data || data.length === 0) { Swal.fire('ไม่พบข้อมูล', 'ไม่มีข้อมูลใหม่', 'info'); return; } const tbody = document.getElementById('previewTableBody'); tbody.innerHTML = ""; data.forEach(row => { let tr = document.createElement('tr'); tr.innerHTML = `<td>${row.refCode}</td><td>${row.name}</td><td>${row.idCard}</td><td>${row.ftStatus||'-'}</td>`; tbody.appendChild(tr); }); exportModal.hide(); previewModal.show(); }
+    function confirmExport() { const year = document.getElementById('monthFilter').value; if (!currentExportType) return; previewModal.hide(); Swal.showLoading(); google.script.run.withSuccessHandler(result => { if (result.count > 0) { downloadCSV(result.content, result.filename); Swal.fire('สำเร็จ', `Export ${result.count} รายการ`, 'success'); loadData(); } else { Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error'); } }).withFailureHandler(onFailure).exportAnnualCSV(currentExportType, year, false); }
+    function exportAnnualReport() { const year = document.getElementById('monthFilter').value; Swal.showLoading(); google.script.run.withSuccessHandler(res => { if(res.count > 0) { downloadCSV(res.content, res.filename); Swal.fire('สำเร็จ', '', 'success'); } else { Swal.fire('ไม่พบข้อมูล', '', 'info'); } }).exportAnnualReport(year); }
+    function downloadCSV(csvContent, filename) { const blob = new Blob(["\uFEFF"+csvContent], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = filename; link.click(); }
+    function formatDate(dateStr) { if(!dateStr) return "-"; if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) { const [y, m, d] = dateStr.split('-'); return `${d}/${m}/${y}`; } if (dateStr.match(/^\d{4}-\d{2}-\d{2}T/)) { let date = new Date(dateStr); let d = date.getDate().toString().padStart(2, '0'); let m = (date.getMonth() + 1).toString().padStart(2, '0'); let y = date.getFullYear(); return `${d}/${m}/${y}`; } return dateStr; }
+    function setFlatpickrValue(id, val) { const el = document.getElementById(id); if(el && el._flatpickr) { if(!val) { el._flatpickr.clear(); return; } if(val.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/)) { const [d, m, y] = val.split('/'); val = `${y}-${m}-${d}`; } el._flatpickr.setDate(val); } }
+    function loadProviderOptions() { google.script.run.withSuccessHandler(data => { providerList = data; const dl = document.getElementById('providerOptions'); dl.innerHTML = ""; data.forEach(p => { const op = document.createElement('option'); op.value = p.code; op.label = `${p.name} (${p.idCard})`; dl.appendChild(op); }); }).getAllProviderOptions(); }
+    function onProviderSelect() { const val = document.getElementById('searchProviderInput').value; if(!val) return; const found = providerList.find(p => p.code === val || p.name === val || p.idCard === val); if(found) { document.getElementById('refCode').value = found.code; document.getElementById('name').value = found.name; document.getElementById('idCard').value = found.idCard; } }
+    function onFailure(error) { Swal.close(); Swal.fire('Error', 'เกิดข้อผิดพลาด: ' + error.message, 'error'); }
+
+    // ==========================================
+    // 🌟 2. Actionable Result Modal & Smart Columns 🌟
+    // ==========================================
+    function handleBulkUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const fileName = file.name.toLowerCase();
+        if (!fileName.endsWith('.csv') && !fileName.endsWith('.xlsx') && !fileName.endsWith('.xls')) {
+            Swal.fire('รูปแบบไฟล์ไม่ถูกต้อง', 'กรุณาอัปโหลดไฟล์นามสกุล .csv, .xlsx หรือ .xls เท่านั้น', 'error');
+            event.target.value = ''; 
+            return;
+        }
+
+        const reader = new FileReader();
+        Swal.fire({ title: 'กำลังอ่านไฟล์...', text: 'กรุณารอสักครู่', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+                
+                if (jsonData.length <= 1) {
+                    Swal.fire('ไฟล์ว่างเปล่า', 'ไม่พบข้อมูลในไฟล์', 'warning');
+                    event.target.value = '';
+                    return;
+                }
+
+                const headers = jsonData[0].map(h => String(h||'').toLowerCase().trim());
+                let idCol = 1; 
+                let statusCol = 2; 
+                
+                headers.forEach((h, idx) => {
+                    if (h.includes('id card') || h.includes('เลขบัตร') || h.includes('บัตรประชาชน')) idCol = idx;
+                    if (h.includes('target status') || h.includes('status') || h.includes('สถานะ') || h.includes('ผลตรวจ') || h.includes('result')) statusCol = idx;
+                });
+
+                let records = [];
+                for(let i=1; i<jsonData.length; i++) {
+                    records.push({
+                        idCard: jsonData[i][idCol] ? String(jsonData[i][idCol]).trim() : "",
+                        status: jsonData[i][statusCol] ? String(jsonData[i][statusCol]).trim() : "" 
+                    });
+                }
+                
+                Swal.close();
+                confirmBulkUpload(records, file.name);
+            } catch (error) {
+                Swal.fire('ไม่สามารถอ่านไฟล์ได้', error.message, 'error');
+            }
+            event.target.value = ''; 
+        };
+        
+        reader.onerror = function() {
+            Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถอ่านไฟล์ได้', 'error');
+            event.target.value = '';
+        }
+        reader.readAsArrayBuffer(file);
+    }
+
+    function confirmBulkUpload(records, fileName) {
+        Swal.fire({
+            title: `อัปเดตข้อมูล ${records.length} รายการ?`,
+            text: `ระบบจะประมวลผลและแสดงตารางสรุปผลให้ทราบทันที`,
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonText: 'ยืนยันอัปเดต',
+            cancelButtonText: 'ยกเลิก',
+            confirmButtonColor: '#198754'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                processUploadToServer(records, fileName);
+            }
+        });
+    }
+
+    function processUploadToServer(records, fileName) {
+        showLoading();
+        google.script.run
+            .withSuccessHandler(res => {
+                hideLoading();
+                if (res.success) {
+                    recentlyUpdatedIds = res.updatedIds || []; 
+                    
+                    document.getElementById('resSuccessCount').textContent = res.successCount;
+                    document.getElementById('resFailedCount').textContent = res.failedCount;
+                    
+                    const tbody = document.getElementById('uploadResultTableBody');
+                    tbody.innerHTML = '';
+                    
+                    records.forEach(rec => {
+                        if(!rec.idCard && !rec.status) return;
+                        
+                        const cleanId = String(rec.idCard).replace(/\D/g, '');
+                        const matchedItem = globalData.find(x => String(x.idCard).replace(/\D/g, '') === cleanId);
+                        const nameDisplay = matchedItem ? matchedItem.name : '<span class="text-muted small"><i class="fas fa-exclamation-circle"></i> ไม่พบในระบบปัจจุบัน</span>';
+                        const idDb = matchedItem ? matchedItem.id : null;
+                        
+                        let rowClass = '';
+                        let statusBadge = `<span class="badge bg-secondary">${rec.status}</span>`;
+                        let extraAction = '';
+                        let rv = rec.status.toLowerCase();
+                        
+                        // 🌟 ไฮไลท์และแสดงข้อความกำกับสำหรับ Popup นำเข้า 🌟
+                        if (rv.includes('not verified') || rv.includes('ไม่ผ่าน') || rv.includes('kyc ไม่ผ่าน') || rv.includes('kycไม่ผ่าน')) {
+                            rowClass = 'table-danger';
+                            statusBadge = `<span class="badge bg-danger">${rec.status}</span>`;
+                        } else if (rv.includes('verified') || rv.includes('ผ่าน') || rv.includes('ได้รับผลแล้ว') || rv.includes('อนุมัติโดยพนักงาน')) {
+                            statusBadge = `<span class="badge bg-success">${rec.status}</span>`;
+                            if (rv.includes('ได้รับผลแล้ว') || rv.includes('อนุมัติโดยพนักงาน')) {
+                                extraAction = `<div class="text-success mt-1" style="font-size: 0.7rem;"><i class="fas fa-magic"></i> ปรับเป็นผลออกแล้ว + ลงวันที่วันนี้</div>`;
+                            }
+                        } else if (rv.includes('pending') || rv.includes('รอ')) {
+                            statusBadge = `<span class="badge bg-warning text-dark">${rec.status}</span>`;
+                        }
+                        
+                        let resultStr = (res.updatedIds && idDb && res.updatedIds.includes(String(idDb))) 
+                            ? '<span class="text-success fw-bold"><i class="fas fa-check-circle me-1"></i> อัปเดตแล้ว</span>'
+                            : '<span class="text-danger fw-bold"><i class="fas fa-times-circle me-1"></i> ล้มเหลว</span>';
+                            
+                        let actionBtn = idDb 
+                            ? `<button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="openEditModalById('${idDb}'); bootstrap.Modal.getInstance(document.getElementById('uploadResultModal')).hide();"><i class="fas fa-external-link-alt me-1"></i> เปิดดู</button>` 
+                            : '-';
+                        
+                        tbody.innerHTML += `
+                            <tr class="${rowClass}">
+                                <td class="ps-4 font-monospace">${rec.idCard}</td>
+                                <td>${nameDisplay}</td>
+                                <td>${statusBadge} ${extraAction}</td>
+                                <td>${resultStr}</td>
+                                <td class="text-center pe-4">${actionBtn}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    new bootstrap.Modal(document.getElementById('uploadResultModal')).show();
+                    loadData(); 
+                } else {
+                    showError(res.message);
+                }
+            })
+            .withFailureHandler(err => {
+                hideLoading();
+                showError("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์: " + err.message);
+            })
+            .processBulkUpdate(records, 'ANNUAL', fileName, currentUser); 
+    }
+
+    function viewHistory() {
+        showLoading();
+        google.script.run
+            .withSuccessHandler(logs => {
+                hideLoading();
+                const tbody = document.getElementById('historyTableBody');
+                if (!tbody) return;
+                tbody.innerHTML = '';
+                
+                if(!logs || logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-3 opacity-25"></i><br>ยังไม่มีประวัติการอัปเดต</td></tr>';
+                } else {
+                    if(!window.uploadLogsData) window.uploadLogsData = [];
+                    
+                    logs.forEach((log, idx) => {
+                        window.uploadLogsData[idx] = log;
+                        
+                        let failBadge = log.failedCount > 0 
+                            ? `<span class="badge bg-danger rounded-pill px-2 py-1">${log.failedCount}</span>` 
+                            : `<span class="text-muted small">-</span>`;
+                            
+                        let successBadge = log.successCount > 0
+                            ? `<span class="badge bg-success rounded-pill px-2 py-1">${log.successCount}</span>`
+                            : `<span class="text-muted small">-</span>`;
+                        
+                        tbody.innerHTML += `
+                            <tr>
+                                <td class="ps-4">
+                                    <span class="fw-bold text-dark"><i class="far fa-clock me-2 text-muted"></i> ${log.timestamp}</span>
+                                </td>
+                                <td>
+                                    <span class="small text-muted"><i class="fas fa-file-excel me-1 text-success"></i> ${log.fileName}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-secondary border">${log.user}</span>
+                                </td>
+                                <td class="text-center">
+                                    ${successBadge}
+                                </td>
+                                <td class="text-center">
+                                    ${failBadge}
+                                </td>
+                                <td class="text-center pe-4">
+                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm" onclick="downloadFullLogCSV(${idx})" title="โหลด CSV รายละเอียดผู้ให้บริการ">
+                                        <i class="fas fa-download me-1"></i> โหลดรายละเอียด
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+                historyModal.show();
+            })
+            .withFailureHandler(err => { hideLoading(); showError("ไม่สามารถดึงประวัติได้: " + err.message); })
+            .getUploadLogs('ANNUAL'); 
+    }
+
+    function downloadFullLogCSV(idx) {
+        const log = window.uploadLogsData[idx];
+        if(!log) return;
+        
+        let csvContent = "ID Card,Target Status,Update Result,Reason\n";
+        
+        if(log.successItems && log.successItems.length > 0) {
+            log.successItems.forEach(item => {
+                csvContent += `="${item.idCard || ''}","${item.status || ''}","SUCCESS","Updated Successfully"\n`;
+            });
+        }
+        
+        if(log.failedItems && log.failedItems.length > 0) {
+            log.failedItems.forEach(item => {
+                csvContent += `="${item.idCard || ''}","${item.status || ''}","FAILED","${item.reason || ''}"\n`;
+            });
+        }
+
+        const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' }); 
+        const link = document.createElement("a");
+        link.setAttribute("href", URL.createObjectURL(blob));
+        const safeTime = String(log.timestamp).replace(/[:\/ ]/g, '_');
+        link.setAttribute("download", `Annual_Update_Details_${safeTime}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    }
+  </script>
+</body>
+</html>
