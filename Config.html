@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>System Configuration</title>
+  <!-- SortableJS Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+  <?!= include('_Styles'); ?>
+  <style>
+    /* Sortable */
+    .list-group-item { display: flex; justify-content: space-between; align-items: center; cursor: grab; background: white; border: 1px solid #f0f0f0; margin-bottom: 5px; border-radius: 8px !important; }
+    .list-group-item:hover { background-color: #f8f9fa; border-color: #e9ecef; }
+    .list-group-item:active { cursor: grabbing; }
+    .drag-handle { color: #ccc; cursor: grab; padding-right: 10px; }
+    .list-group-item:hover .drag-handle { color: var(--ci-primary); }
+    .sortable-ghost { background-color: #e9ecef; opacity: 0.5; }
+    .config-header { font-weight: 700; color: #555; display: flex; align-items: center; gap: 8px; margin-bottom: 15px; }
+    .card-config { border: none; box-shadow: var(--shadow-sm); border-radius: 16px; height: 100%; transition: var(--transition); }
+    .card-config:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); }
+    
+    /* Checklist Toggle Item */
+    .checklist-item {
+        transition: background-color 0.2s;
+    }
+    .checklist-item:hover {
+        background-color: #f9fbfd;
+    }
+    .badge-choice { font-size: 0.75rem; background-color: #e9ecef; color: #495057; border: 1px solid #dee2e6; margin-right: 4px; border-radius: 4px; padding: 2px 6px; cursor: default; }
+    
+    /* Conditional Item (Child) */
+    .checklist-item.is-child {
+        margin-left: 30px;
+        border-left: 3px solid var(--ci-primary) !important;
+        background-color: #f8fcfd;
+    }
+    .condition-badge {
+        font-size: 0.7rem;
+        background-color: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+        padding: 2px 8px;
+        border-radius: 4px;
+        display: inline-block;
+        margin-bottom: 4px;
+        font-weight: 500;
+    }
+    
+    /* Type Badge */
+    .badge-type { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-left: 5px; background: #e3f2fd; color: #0d6efd; border: 1px solid #90caf9; }
+  </style>
+</head>
+<body>
+
+  <?!= include('_Sidebar'); ?>
+
+  <div class="main-content">
+    <?!= include('_Navbar'); ?>
+    
+    <div class="container-fluid">
+        <!-- Row 1: Core System -->
+        <h6 class="text-primary border-bottom pb-2 mb-3 fw-bold">1. ตั้งค่าทั่วไป (General)</h6>
+        <div class="row g-4 mb-5">
+            <!-- Admin -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card card-config p-3">
+                    <div class="config-header"><div class="rounded-circle bg-primary bg-opacity-10 p-2 text-primary"><i class="fas fa-user-shield"></i></div> ผู้ดูแลระบบ (Admin)</div>
+                    <div class="input-group mb-3"><input type="email" id="newAdmin" class="form-control" placeholder="Email"><button class="btn btn-soft-primary" onclick="addConfig('admin')"><i class="fas fa-plus"></i></button></div>
+                    <ul class="list-group small list-group-flush" id="adminList"></ul>
+                </div>
+            </div>
+            <!-- Center -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card card-config p-3">
+                    <div class="config-header"><div class="rounded-circle bg-success bg-opacity-10 p-2 text-success"><i class="fas fa-building"></i></div> ศูนย์ (Centers)</div>
+                    <div class="input-group mb-3"><input type="text" id="newCenter" class="form-control" placeholder="ชื่อศูนย์"><button class="btn btn-soft-success" onclick="addConfig('center')"><i class="fas fa-plus"></i></button></div>
+                    <ul class="list-group small list-group-flush" id="centerList"></ul>
+                </div>
+            </div>
+            <!-- Master Type -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card card-config p-3">
+                    <div class="config-header"><div class="rounded-circle bg-warning bg-opacity-10 p-2 text-warning"><i class="fas fa-briefcase"></i></div>  ประเภทผู้ให้บริการ (Master)</div>
+                    <div class="input-group mb-3"><input type="text" id="newMasterType" class="form-control" placeholder="ประเภท"><button class="btn btn-soft-warning text-dark" onclick="addConfig('masterType')"><i class="fas fa-plus"></i></button></div>
+                    <ul class="list-group small list-group-flush" id="masterTypeList"></ul>
+                </div>
+            </div>
+            <!-- FT Status -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card card-config p-3">
+                    <div class="config-header"><div class="rounded-circle bg-danger bg-opacity-10 p-2 text-danger"><i class="fas fa-flag"></i></div> สถานะ FT</div>
+                    <div class="input-group mb-3"><input type="text" id="newFtStatus" class="form-control" placeholder="สถานะ"><button class="btn btn-soft-danger" onclick="addConfig('ftStatus')"><i class="fas fa-plus"></i></button></div>
+                    <ul class="list-group small list-group-flush" id="ftStatusList"></ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 2: Onboard & Verification -->
+        <h6 class="text-primary border-bottom pb-2 mb-3 fw-bold">2. ตั้งค่า Onboard & ตรวจสอบ</h6>
+        <div class="row g-4 mb-5">
+            <!-- Onboard Center -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card card-config p-3">
+                    <div class="config-header"><div class="rounded-circle bg-info bg-opacity-10 p-2 text-info"><i class="fas fa-map-marker-alt"></i></div> ศูนย์เทรน</div>
+                    <div class="input-group mb-3"><input type="text" id="newOnboardCenter" class="form-control" placeholder="ชื่อศูนย์เทรน"><button class="btn btn-soft-info" onclick="addConfig('onboardCenter')"><i class="fas fa-plus"></i></button></div>
+                    <ul class="list-group small list-group-flush" id="onboardCenterList"></ul>
+                </div>
+            </div>
+            <!-- Onboard Groups -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card card-config p-3">
+                    <div class="config-header"><div class="rounded-circle bg-secondary bg-opacity-10 p-2 text-secondary"><i class="fas fa-users-cog"></i></div> กลุ่ม (Groups)</div>
+                    <div class="input-group mb-3"><input type="text" id="newOnboardGroup" class="form-control" placeholder="ชื่อกลุ่ม"><button class="btn btn-soft-secondary" onclick="addConfig('onboardGroup')"><i class="fas fa-plus"></i></button></div>
+                    <ul class="list-group small list-group-flush" id="onboardGroupList"></ul>
+                </div>
+            </div>
+            <!-- Onboard Types -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card card-config p-3">
+                    <div class="config-header"><div class="rounded-circle bg-dark bg-opacity-10 p-2 text-dark"><i class="fas fa-tags"></i></div> สถานะ Onboard</div>
+                    <div class="input-group mb-3"><input type="text" id="newOnboardType" class="form-control" placeholder="ชื่อสถานะ"><button class="btn btn-outline-dark border-0 bg-light" onclick="addConfig('onboardType')"><i class="fas fa-plus"></i></button></div>
+                    <ul class="list-group small list-group-flush" id="onboardTypeList"></ul>
+                </div>
+            </div>
+            <!-- 🌟 Onboard Tags (NEW) 🌟 -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card card-config p-3">
+                    <div class="config-header"><div class="rounded-circle bg-warning bg-opacity-10 p-2 text-warning"><i class="fas fa-tasks"></i></div> Tags (สิ่งที่ต้องติดตาม)</div>
+                    <div class="input-group mb-3"><input type="text" id="newOnboardTag" class="form-control" placeholder="เช่น รูปโปรไฟล์"><button class="btn btn-soft-warning text-dark" onclick="addConfig('onboardTag')"><i class="fas fa-plus"></i></button></div>
+                    <ul class="list-group small list-group-flush" id="onboardTagList"></ul>
+                </div>
+            </div>
+            <!-- Results -->
+            <div class="col-md-6 col-lg-3">
+                <div class="card card-config p-3">
+                    <div class="config-header"><div class="rounded-circle bg-primary bg-opacity-10 p-2 text-primary"><i class="fas fa-poll"></i></div> ผลการตรวจสอบ</div>
+                    <div class="input-group mb-3"><input type="text" id="newResult" class="form-control" placeholder="ผลการตรวจสอบ"><button class="btn btn-soft-primary" onclick="addConfig('result')"><i class="fas fa-plus"></i></button></div>
+                    <ul class="list-group small list-group-flush" id="resultList"></ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 3: Checklist Management -->
+        <h6 class="text-primary border-bottom pb-2 mb-3 fw-bold">3. ตั้งค่าแบบสอบถาม (First Job Checklist)</h6>
+        <div class="row g-4 mb-4">
+             <div class="col-12">
+                <div class="card card-config p-4">
+                    <div class="alert alert-soft-primary border-0 d-flex align-items-center mb-4">
+                        <i class="fas fa-edit me-3 fs-4"></i>
+                        <div>
+                            <strong>คำแนะนำ:</strong> จัดการคำถามและเงื่อนไข (Conditional Logic) ได้ที่นี่
+                        </div>
+                        <div class="ms-auto d-flex gap-2">
+                             <button class="btn btn-primary-theme btn-sm shadow-sm" onclick="openAddQuestionModal()">
+                                <i class="fas fa-plus me-1"></i> เพิ่มคำถาม
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <!-- Pre-Start Column -->
+                        <div class="col-md-6 border-end">
+                            <h6 class="text-muted fw-bold mb-3"><i class="fas fa-clipboard-list me-2"></i>ก่อนเริ่มงาน (Pre-Start)</h6>
+                            <div class="list-group list-group-flush" id="preChecklistConfig"></div>
+                        </div>
+                        
+                        <!-- Post-Start Column -->
+                        <div class="col-md-6 ps-md-4">
+                            <h6 class="text-muted fw-bold mb-3"><i class="fas fa-check-double me-2"></i>หลังจบงาน (Post-Start)</h6>
+                            <div class="list-group list-group-flush" id="postChecklistConfig"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+  </div>
+
+  <!-- Edit Options Modal -->
+  <div class="modal fade" id="editOptionsModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content border-0 shadow">
+              <div class="modal-header bg-light">
+                  <h5 class="modal-title fs-6 fw-bold"><i class="fas fa-pen-to-square me-2"></i>แก้ไขคำถาม</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                  <input type="hidden" id="editQId">
+                  <input type="hidden" id="editQSection"> 
+                  
+                  <div class="mb-3">
+                      <label class="form-label small fw-bold">ชื่อคำถาม</label>
+                      <input type="text" class="form-control" id="editQLabel">
+                  </div>
+                  
+                  <div class="mb-3">
+                      <label class="form-label small fw-bold">รูปแบบคำตอบ</label>
+                      <select class="form-select" id="editQType" onchange="toggleEditQType()">
+                          <option value="select">ตัวเลือกเดียว (Dropdown)</option>
+                          <option value="checkbox">หลายคำตอบ (Checkbox)</option>
+                          <option value="text">ข้อความ (Text)</option>
+                      </select>
+                  </div>
+                  
+                  <!-- Conditional Logic Toggle -->
+                  <div class="mb-3 p-3 bg-light rounded border border-warning border-opacity-25">
+                      <div class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="editEnableCondition" onchange="toggleEditConditionSettings()">
+                          <label class="form-check-label fw-bold small text-muted" for="editEnableCondition">
+                              เงื่อนไขการแสดงผล (Conditional)
+                          </label>
+                      </div>
+                      
+                      <div id="editConditionSettings" class="mt-3 d-none">
+                          <div class="mb-2">
+                              <label class="form-label small">แสดงเมื่อคำถามนี้... (Parent)</label>
+                              <select class="form-select form-select-sm" id="editParentQuestion" onchange="refreshEditTriggerValues()">
+                                  <option value="">- เลือกคำถามหลัก -</option>
+                              </select>
+                          </div>
+                          <div>
+                              <label class="form-label small">ตอบว่า... (Value)</label>
+                              <select class="form-select form-select-sm" id="editTriggerValue">
+                                  <option value="">- เลือกคำตอบ -</option>
+                              </select>
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- Options Container -->
+                  <div id="editOptionsContainer" class="mb-3">
+                      <label class="form-label small fw-bold">ตัวเลือกที่มีอยู่</label>
+                      <ul class="list-group small mb-2" id="optionsList"></ul>
+                      <div class="input-group input-group-sm">
+                          <input type="text" class="form-control" id="newOptionInput" placeholder="เพิ่มตัวเลือก...">
+                          <button class="btn btn-outline-secondary" onclick="addOption()">เพิ่ม</button>
+                      </div>
+                  </div>
+              </div>
+              <div class="modal-footer border-0 bg-light">
+                  <button type="button" class="btn btn-primary-theme w-100 rounded-pill" onclick="saveChecklistChanges()">บันทึกการเปลี่ยนแปลง</button>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <!-- Add Question Modal -->
+  <div class="modal fade" id="addQuestionModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content border-0 shadow">
+              <div class="modal-header bg-primary text-white">
+                  <h5 class="modal-title fs-6 fw-bold"><i class="fas fa-plus-circle me-2"></i>เพิ่มคำถามใหม่</h5>
+                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                  <div class="mb-3">
+                      <label class="form-label small fw-bold">ชื่อคำถาม <span class="text-danger">*</span></label>
+                      <input type="text" class="form-control" id="addQName" placeholder="เช่น รายละเอียดความเสียหาย">
+                  </div>
+                  <div class="row g-3 mb-3">
+                      <div class="col-6">
+                           <label class="form-label small fw-bold">ส่วนงาน</label>
+                           <select class="form-select" id="addQSection" onchange="refreshParentOptions()">
+                               <option value="pre">ก่อนเริ่มงาน</option>
+                               <option value="post">หลังจบงาน</option>
+                           </select>
+                      </div>
+                      <div class="col-6">
+                           <label class="form-label small fw-bold">รูปแบบคำตอบ</label>
+                           <select class="form-select" id="addQType" onchange="toggleAddQType()">
+                               <option value="select">ตัวเลือก (Dropdown)</option>
+                               <option value="checkbox">หลายคำตอบ (Checkbox)</option>
+                               <option value="text">ข้อความ (Text)</option>
+                           </select>
+                      </div>
+                  </div>
+                  
+                  <!-- Conditional Logic Toggle -->
+                  <div class="mb-3 p-3 bg-light rounded border border-warning border-opacity-25">
+                      <div class="form-check form-switch">
+                          <input class="form-check-input" type="checkbox" id="enableCondition" onchange="toggleConditionSettings()">
+                          <label class="form-check-label fw-bold small text-muted" for="enableCondition">
+                              ตั้งค่าเงื่อนไข (Conditional)
+                          </label>
+                      </div>
+                      
+                      <div id="conditionSettings" class="mt-3 d-none">
+                          <div class="mb-2">
+                              <label class="form-label small">แสดงเมื่อคำถามนี้...</label>
+                              <select class="form-select form-select-sm" id="parentQuestion" onchange="refreshTriggerValues()">
+                                  <option value="">- เลือกคำถามหลัก -</option>
+                              </select>
+                          </div>
+                          <div>
+                              <label class="form-label small">ตอบว่า...</label>
+                              <select class="form-select form-select-sm" id="triggerValue">
+                                  <option value="">- เลือกคำตอบ -</option>
+                              </select>
+                          </div>
+                      </div>
+                  </div>
+
+                  <!-- Options List Input -->
+                  <div class="mb-3" id="addQOptionsGroup">
+                      <label class="form-label small fw-bold text-muted">ตัวเลือก (Options)</label>
+                      <div class="input-group mb-2">
+                          <input type="text" class="form-control" id="newOptionInputAdd" placeholder="พิมพ์ตัวเลือกแล้วกดเพิ่ม..." onkeydown="if(event.key==='Enter') addTempOption()">
+                          <button class="btn btn-outline-secondary" type="button" onclick="addTempOption()"><i class="fas fa-plus"></i></button>
+                      </div>
+                      <ul class="list-group small" id="tempOptionsList" style="max-height: 100px; overflow-y: auto;"></ul>
+                  </div>
+                  
+                  <div class="alert alert-light border small text-muted mb-0">
+                      <i class="fas fa-info-circle me-1"></i> ระบบจะสร้างรหัส ID อัตโนมัติ
+                  </div>
+              </div>
+              <div class="modal-footer border-0 bg-light">
+                  <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ยกเลิก</button>
+                  <button type="button" class="btn btn-primary-theme btn-sm px-4 rounded-pill" onclick="saveNewQuestion()">บันทึกคำถาม</button>
+              </div>
+          </div>
+      </div>
+  </div>
+
+  <?!= include('_Scripts'); ?>
+  <script>
+    let configData = {};
+    let checklistQuestions = []; // Loaded from server
+    let editOptionsModal, addQuestionModal;
+    let tempNewOptions = []; 
+
+    window.onload = function() { 
+        editOptionsModal = new bootstrap.Modal(document.getElementById('editOptionsModal'));
+        addQuestionModal = new bootstrap.Modal(document.getElementById('addQuestionModal'));
+        
+        if(document.getElementById('pageTitle')) document.getElementById('pageTitle').textContent = "ตั้งค่าระบบ (Configuration)";
+        
+        loadConfigs(); 
+        
+        // Load Checklist
+        showLoading();
+        google.script.run.withSuccessHandler(data => {
+            hideLoading();
+            checklistQuestions = data || [];
+            renderChecklistConfig();
+        }).getChecklistConfig();
+        
+        const navLinks = document.querySelectorAll('.nav-link-custom');
+        navLinks.forEach(link => link.classList.remove('active'));
+        const activeLink = document.querySelector('.nav-link-custom[data-page="config"]');
+        if(activeLink) activeLink.classList.add('active');
+    };
+
+    function loadConfigs() { showLoading(); google.script.run.withSuccessHandler(renderConfigs).getClientConfig(); }
+
+    function renderConfigs(data) {
+      hideLoading();
+      configData = data; 
+      renderList('adminList', data.admins, 'admin');
+      renderList('centerList', data.centers, 'center');
+      renderList('resultList', data.results, 'result');
+      renderList('ftStatusList', data.ftStatuses, 'ftStatus');
+      renderList('onboardGroupList', data.onboardGroups, 'onboardGroup');
+      renderList('onboardTypeList', data.onboardTypes, 'onboardType');
+      renderList('masterTypeList', data.masterTypes, 'masterType');
+      renderList('onboardCenterList', data.onboardCenters, 'onboardCenter');
+      // 🌟 เพิ่มส่วนแสดงผล Tag
+      renderList('onboardTagList', data.onboardTags, 'onboardTag');
+      initSortable();
+    }
+
+    function renderList(elId, items, type) {
+        const ul = document.getElementById(elId);
+        if (!ul) { console.warn("Element not found:", elId); return; }
+        ul.innerHTML = "";
+        if(!items || items.length === 0) { ul.innerHTML = '<li class="list-group-item text-muted text-center p-2 border-0 bg-transparent small">ไม่มีข้อมูล</li>'; return; }
+        items.forEach(item => {
+            const safe = item.replace(/'/g, "\\'");
+            ul.innerHTML += `<li class="list-group-item" data-value="${item}"><div class="d-flex align-items-center w-100"><i class="fas fa-grip-vertical drag-handle"></i><span class="ms-2 flex-grow-1 text-break">${item}</span></div><button class="btn btn-sm text-danger" onclick="removeConfig('${type}', '${safe}')"><i class="fas fa-trash-alt"></i></button></li>`;
+        });
+    }
+
+    function initSortable() {
+        const lists = ['adminList', 'centerList', 'resultList', 'ftStatusList', 'onboardGroupList', 'onboardTypeList', 'masterTypeList', 'onboardCenterList', 'onboardTagList'];
+        const types = ['admin', 'center', 'result', 'ftStatus', 'onboardGroup', 'onboardType', 'masterType', 'onboardCenter', 'onboardTag'];
+        lists.forEach((id, idx) => {
+            const el = document.getElementById(id); if (!el) return;
+            new Sortable(el, { animation: 150, handle: '.drag-handle', ghostClass: 'sortable-ghost', onEnd: function () { saveOrder(types[idx], el); } });
+        });
+    }
+    
+    function saveOrder(type, ul) {
+        const items = []; ul.querySelectorAll('li').forEach(li => { const v = li.getAttribute('data-value'); if(v) items.push(v); });
+        google.script.run.saveConfigOrder(type, items);
+    }
+
+    function addConfig(type) {
+      const idMap = { 'admin':'newAdmin', 'center':'newCenter', 'result':'newResult', 'ftStatus':'newFtStatus', 'onboardGroup':'newOnboardGroup', 'onboardType':'newOnboardType', 'masterType':'newMasterType', 'onboardCenter':'newOnboardCenter', 'onboardTag': 'newOnboardTag' };
+      const input = document.getElementById(idMap[type]);
+      if(!input) return;
+      const val = input.value.trim();
+      if (!val) return;
+      showLoading();
+      google.script.run.withSuccessHandler(res => { hideLoading(); if(res.success) { input.value = ""; loadConfigs(); Swal.fire({icon:'success',title:'เพิ่มแล้ว',timer:1000,showConfirmButton:false}); } else showError(res.message); }).addConfigItem(type, val);
+    }
+
+    function removeConfig(type, val) {
+      Swal.fire({ title: 'ยืนยันลบ?', text: val, icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' }).then((r) => {
+        if (r.isConfirmed) { showLoading(); google.script.run.withSuccessHandler(() => { hideLoading(); loadConfigs(); }).removeConfigItem(type, val); }
+      });
+    }
+    
+    // --- Checklist Logic ---
+    function renderChecklistConfig() {
+        const preContainer = document.getElementById('preChecklistConfig');
+        const postContainer = document.getElementById('postChecklistConfig');
+        preContainer.innerHTML = ''; postContainer.innerHTML = '';
+
+        if (!checklistQuestions || checklistQuestions.length === 0) {
+            preContainer.innerHTML = '<div class="text-muted small">ไม่มีข้อมูล</div>';
+            return;
+        }
+
+        checklistQuestions.forEach(q => {
+            const isChecked = q.active !== false ? 'checked' : ''; 
+            
+            let choicesHtml = '';
+            if ((q.type === 'select' || q.type === 'checkbox') && q.options && q.options.length > 0) {
+                 choicesHtml = `<div class="mt-1">`;
+                 q.options.forEach(opt => choicesHtml += `<span class="badge-choice">${opt}</span>`);
+                 choicesHtml += `</div>`;
+            }
+            
+            let conditionBadge = '';
+            let itemClass = 'list-group-item border-0 px-0 checklist-item row align-items-start';
+            if (q.condition) {
+                itemClass += ' is-child';
+                const parent = checklistQuestions.find(p => p.id === q.condition.parentId);
+                const parentName = parent ? parent.label.substring(0, 20) + (parent.label.length>20?'...':'') : q.condition.parentId;
+                conditionBadge = `<div class="condition-badge"><i class="fas fa-code-branch me-1"></i>แสดงเมื่อตอบ "${q.condition.value}" (จากข้อ "${parentName}")</div>`;
+            }
+            
+            let typeLabel = q.type === 'text' ? 'ข้อความ' : (q.type === 'checkbox' ? 'หลายคำตอบ' : 'ตัวเลือกเดียว');
+            let typeBadge = `<span class="badge-type">${typeLabel}</span>`;
+
+            const itemHtml = `
+                <div class="${itemClass}">
+                    <div class="col-8">
+                        ${conditionBadge}
+                        <div class="fw-bold text-dark small">${q.label} ${typeBadge}</div>
+                        <div class="text-muted" style="font-size:0.65rem; opacity:0.6;">ID: ${q.id}</div>
+                        ${choicesHtml}
+                    </div>
+                    <div class="col-4 d-flex justify-content-end align-items-center gap-2">
+                        <button class="btn btn-sm btn-light border" onclick="openEditOptions('${q.id}')" title="แก้ไข"><i class="fas fa-pen text-muted"></i></button>
+                        <button class="btn btn-sm btn-light border text-danger" onclick="deleteQuestion('${q.id}')" title="ลบคำถาม"><i class="fas fa-trash"></i></button>
+                        <div class="form-check form-switch ms-2">
+                            <input class="form-check-input" type="checkbox" role="switch" onchange="toggleChecklist('${q.id}', this)" ${isChecked}>
+                        </div>
+                    </div>
+                </div>`;
+            
+            if(q.section === 'pre') preContainer.innerHTML += itemHtml;
+            else postContainer.innerHTML += itemHtml;
+        });
+    }
+
+    function toggleChecklist(qid, checkbox) {
+        const q = checklistQuestions.find(x => x.id === qid);
+        if(q) {
+            q.active = checkbox.checked;
+            saveToServer();
+        }
+    }
+    
+    // --- Edit Question Logic ---
+    function openEditOptions(qid) {
+        const q = checklistQuestions.find(x => x.id === qid);
+        if(!q) return;
+        
+        document.getElementById('editQId').value = q.id;
+        document.getElementById('editQLabel').value = q.label;
+        document.getElementById('editQSection').value = q.section;
+        
+        const typeSelect = document.getElementById('editQType');
+        typeSelect.value = q.type || 'select';
+        
+        toggleEditQType(); 
+        if (q.type === 'select' || q.type === 'checkbox') {
+            renderOptionsList(q.options || []);
+        }
+        
+        const conditionCheck = document.getElementById('editEnableCondition');
+        if (q.condition) {
+            conditionCheck.checked = true;
+            toggleEditConditionSettings();
+            refreshParentOptionsForEdit(q.section, q.id); 
+            document.getElementById('editParentQuestion').value = q.condition.parentId;
+            refreshEditTriggerValues();
+            document.getElementById('editTriggerValue').value = q.condition.value;
+        } else {
+            conditionCheck.checked = false;
+            toggleEditConditionSettings();
+            refreshParentOptionsForEdit(q.section, q.id); 
+        }
+        
+        editOptionsModal.show();
+    }
+    
+    function toggleEditQType() {
+        const type = document.getElementById('editQType').value;
+        const optionsContainer = document.getElementById('editOptionsContainer');
+        if (type === 'select' || type === 'checkbox') {
+            optionsContainer.style.display = 'block';
+        } else {
+            optionsContainer.style.display = 'none';
+        }
+    }
+    
+    function toggleEditConditionSettings() {
+        const isEnabled = document.getElementById('editEnableCondition').checked;
+        const settings = document.getElementById('editConditionSettings');
+        if(isEnabled) settings.classList.remove('d-none');
+        else settings.classList.add('d-none');
+    }
+    
+    function refreshParentOptionsForEdit(section, currentQId) {
+        const parentSel = document.getElementById('editParentQuestion');
+        parentSel.innerHTML = '<option value="">- เลือกคำถามหลัก -</option>';
+        
+        checklistQuestions.filter(q => q.section === section && (q.type === 'select' || q.type === 'checkbox') && q.id !== currentQId).forEach(q => {
+            parentSel.add(new Option(q.label, q.id));
+        });
+    }
+    
+    function refreshEditTriggerValues() {
+        const parentId = document.getElementById('editParentQuestion').value;
+        const triggerSel = document.getElementById('editTriggerValue');
+        triggerSel.innerHTML = '<option value="">- เลือกคำตอบ -</option>';
+        
+        const parentQ = checklistQuestions.find(q => q.id === parentId);
+        if(parentQ && parentQ.options) {
+            parentQ.options.forEach(opt => {
+                triggerSel.add(new Option(opt, opt));
+            });
+        }
+    }
+    
+    function renderOptionsList(options) {
+        const list = document.getElementById('optionsList');
+        list.innerHTML = "";
+        options.forEach((opt, idx) => {
+            list.innerHTML += `
+               <li class="list-group-item d-flex justify-content-between align-items-center p-2">
+                  <span>${opt}</span>
+                  <button class="btn btn-sm text-danger" onclick="removeOption(${idx})">&times;</button>
+               </li>`;
+        });
+    }
+    
+    function addOption() {
+        const val = document.getElementById('newOptionInput').value.trim();
+        if(!val) return;
+        const qid = document.getElementById('editQId').value;
+        const q = checklistQuestions.find(x => x.id === qid);
+        if(q) {
+            if(!q.options) q.options = [];
+            q.options.push(val);
+            renderOptionsList(q.options);
+            document.getElementById('newOptionInput').value = "";
+        }
+    }
+    
+    function removeOption(idx) {
+        const qid = document.getElementById('editQId').value;
+        const q = checklistQuestions.find(x => x.id === qid);
+        if(q && q.options) {
+            q.options.splice(idx, 1);
+            renderOptionsList(q.options);
+        }
+    }
+    
+    function saveChecklistChanges() {
+        const qid = document.getElementById('editQId').value;
+        const q = checklistQuestions.find(x => x.id === qid);
+        if(q) {
+            q.label = document.getElementById('editQLabel').value;
+            q.type = document.getElementById('editQType').value;
+
+            if ((q.type === 'select' || q.type === 'checkbox') && (!q.options || q.options.length === 0)) {
+                q.options = ['ปกติ', 'ผิดปกติ']; 
+            }
+            
+            if (document.getElementById('editEnableCondition').checked) {
+                 const parentId = document.getElementById('editParentQuestion').value;
+                 const value = document.getElementById('editTriggerValue').value;
+                 if(parentId && value) {
+                     q.condition = { parentId: parentId, value: value };
+                 }
+            } else {
+                 delete q.condition; 
+            }
+            
+            saveToServer();
+            editOptionsModal.hide();
+            Swal.fire({ icon: 'success', title: 'บันทึกแล้ว', showConfirmButton: false, timer: 1500 });
+        }
+    }
+    
+    // --- Add Question Logic ---
+    function openAddQuestionModal() {
+        document.getElementById('addQName').value = "";
+        document.getElementById('addQSection').value = "pre";
+        document.getElementById('addQType').value = "select";
+        document.getElementById('enableCondition').checked = false;
+        tempNewOptions = [];
+        renderTempOptions();
+        toggleAddQType(); 
+        toggleConditionSettings();
+        refreshParentOptions(); 
+        addQuestionModal.show();
+    }
+    
+    function toggleAddQType() {
+        const type = document.getElementById('addQType').value;
+        const group = document.getElementById('addQOptionsGroup');
+        if(type === 'select' || type === 'checkbox') group.classList.remove('d-none');
+        else group.classList.add('d-none');
+    }
+    
+    function toggleConditionSettings() {
+        const isEnabled = document.getElementById('enableCondition').checked;
+        const settings = document.getElementById('conditionSettings');
+        if(isEnabled) {
+            settings.classList.remove('d-none');
+            refreshParentOptions();
+        } else {
+            settings.classList.add('d-none');
+        }
+    }
+    
+    function refreshParentOptions() {
+        const section = document.getElementById('addQSection').value;
+        const parentSel = document.getElementById('parentQuestion');
+        parentSel.innerHTML = '<option value="">- เลือกคำถามหลัก -</option>';
+        
+        checklistQuestions.filter(q => q.section === section && (q.type === 'select' || q.type === 'checkbox')).forEach(q => {
+            parentSel.add(new Option(q.label, q.id));
+        });
+    }
+    
+    function refreshTriggerValues() {
+        const parentId = document.getElementById('parentQuestion').value;
+        const triggerSel = document.getElementById('triggerValue');
+        triggerSel.innerHTML = '<option value="">- เลือกคำตอบ -</option>';
+        
+        const parentQ = checklistQuestions.find(q => q.id === parentId);
+        if(parentQ && parentQ.options) {
+            parentQ.options.forEach(opt => {
+                triggerSel.add(new Option(opt, opt));
+            });
+        }
+    }
+
+    function addTempOption() {
+        const val = document.getElementById('newOptionInputAdd').value.trim();
+        if(val) {
+            tempNewOptions.push(val);
+            document.getElementById('newOptionInputAdd').value = "";
+            renderTempOptions();
+        }
+    }
+
+    function removeTempOption(idx) {
+        tempNewOptions.splice(idx, 1);
+        renderTempOptions();
+    }
+
+    function renderTempOptions() {
+        const list = document.getElementById('tempOptionsList');
+        list.innerHTML = "";
+        tempNewOptions.forEach((opt, i) => {
+            list.innerHTML += `
+                <li class="list-group-item d-flex justify-content-between align-items-center p-2 bg-light border-0 mb-1 rounded-2">
+                    <span>${opt}</span>
+                    <button class="btn btn-sm text-danger p-0" onclick="removeTempOption(${i})"><i class="fas fa-times"></i></button>
+                </li>`;
+        });
+    }
+    
+    function saveNewQuestion() {
+        const name = document.getElementById('addQName').value.trim();
+        const section = document.getElementById('addQSection').value;
+        const type = document.getElementById('addQType').value;
+        
+        if (!name) {
+            Swal.fire('ข้อมูลไม่ครบ', 'กรุณาระบุชื่อคำถาม', 'warning');
+            return;
+        }
+        
+        const id = 'q_' + Date.now().toString(36);
+        let options = [];
+        if (type === 'select' || type === 'checkbox') {
+            options = [...tempNewOptions];
+            if(options.length === 0) options = ['ปกติ', 'ผิดปกติ'];
+        }
+        
+        const newQ = {
+            id: id,
+            label: name,
+            section: section,
+            type: type,
+            active: true,
+            options: options
+        };
+        
+        if (document.getElementById('enableCondition').checked) {
+             const parentId = document.getElementById('parentQuestion').value;
+             const value = document.getElementById('triggerValue').value;
+             if(parentId && value) {
+                 newQ.condition = { parentId: parentId, value: value };
+             }
+        }
+        
+        checklistQuestions.push(newQ);
+        saveToServer();
+        addQuestionModal.hide();
+        
+        Swal.fire({ icon: 'success', title: 'เพิ่มคำถามแล้ว', text: 'บันทึกเรียบร้อย', timer: 1500, showConfirmButton: false });
+    }
+
+    function deleteQuestion(qid) {
+        Swal.fire({
+            title: 'ยืนยันลบ?',
+            text: "คำถามนี้จะหายไปจากแบบฟอร์มทันที",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'ลบ'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                checklistQuestions = checklistQuestions.filter(q => q.id !== qid);
+                checklistQuestions.forEach(q => {
+                    if(q.condition && q.condition.parentId === qid) delete q.condition;
+                });
+                
+                saveToServer();
+                Swal.fire({ icon: 'success', title: 'ลบแล้ว', showConfirmButton: false, timer: 1000 });
+            }
+        });
+    }
+
+    function saveToServer() {
+        showLoading();
+        google.script.run.withSuccessHandler(res => {
+            hideLoading();
+            renderChecklistConfig();
+        }).saveChecklistConfig(checklistQuestions);
+    }
+    
+    const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+  </script>
+</body>
+</html>
