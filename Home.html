@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <title>Partner Relation (PRS)</title>
+  <?!= include('_Styles'); ?>
+  
+  <style>
+    .menu-card {
+        border: none;
+        border-radius: 20px;
+        padding: 2.5rem 1.5rem;
+        text-align: center;
+        text-decoration: none;
+        color: var(--ci-text);
+        background: white;
+        transition: var(--transition);
+        position: relative;
+        overflow: hidden;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .menu-card::before {
+        content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 6px;
+        background: var(--ci-primary); opacity: 0; transition: var(--transition);
+    }
+    
+    .menu-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 15px 35px rgba(49, 193, 215, 0.15);
+    }
+    .menu-card:hover::before { opacity: 1; }
+    
+    .icon-box {
+        width: 80px; height: 80px;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2.5rem;
+        margin-bottom: 20px;
+        transition: var(--transition);
+        background: #f8f9fa;
+        color: var(--ci-text-muted);
+    }
+    
+    .menu-card:hover .icon-box { transform: scale(1.1) rotate(5deg); }
+    
+    /* Specific Colors for each module */
+    .menu-onboard:hover .icon-box { background: #e0f7fa; color: #00bcd4; }
+    .menu-firstbk:hover .icon-box { background: #f3e5f5; color: #9c27b0; }
+    .menu-verify:hover  .icon-box { background: #e8f5e9; color: #198754; }
+    .menu-account:hover .icon-box { background: #fff3cd; color: #ffc107; }
+    .menu-report:hover  .icon-box { background: #e1f5fe; color: #0dcaf0; }
+    .menu-config:hover  .icon-box { background: #eceff1; color: #607d8b; }
+    
+    .menu-title { font-weight: 700; font-size: 1.25rem; margin-bottom: 8px; color: #2d3436; }
+    .menu-desc { font-size: 0.9rem; color: #95a5a6; line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <?!= include('_Sidebar'); ?>
+
+  <!-- Main Content -->
+  <div class="main-content">
+      <!-- Navbar -->
+      <?!= include('_Navbar'); ?>
+      
+      <!-- Content Area -->
+      <div class="container-fluid py-4">
+          
+          <div class="text-center mb-5">
+              <h2 class="fw-bold text-dark mb-2">ยินดีต้อนรับเข้าสู่ระบบ</h2>
+              <p class="text-muted">ระบบจัดการผู้ให้บริการ (Partner Relation Management System)</p>
+          </div>
+
+          <div class="row g-4 justify-content-center">
+              
+              <!-- 1. Onboard -->
+              <div class="col-md-6 col-lg-4 col-xl-3">
+                  <a href="<?= ScriptApp.getService().getUrl() ?>?page=onboard" class="card menu-card menu-onboard">
+                      <div class="icon-box"><i class="fas fa-user-plus"></i></div>
+                      <div class="menu-title">ติดตามเปิดระบบ</div>
+                      <div class="menu-desc">ตรวจสอบสถานะการอบรม<br>และติดตามคุณแม่บ้านใหม่ (Onboard)</div>
+                  </a>
+              </div>
+
+              <!-- 2. First Job -->
+              <div class="col-md-6 col-lg-4 col-xl-3">
+                  <a href="<?= ScriptApp.getService().getUrl() ?>?page=firstbk" class="card menu-card menu-firstbk">
+                      <div class="icon-box"><i class="fas fa-briefcase"></i></div>
+                      <div class="menu-title">ติดตามรับงานแรก</div>
+                      <div class="menu-desc">ดูแลและติดตามผลการทำงาน<br>งานแรก (First Job Tracking)</div>
+                  </a>
+              </div>
+
+              <!-- 3. Unified Verify Workspace -->
+              <div class="col-md-6 col-lg-4 col-xl-3">
+                  <a href="<?= ScriptApp.getService().getUrl() ?>?page=verify_workspace" class="card menu-card menu-verify">
+                      <div class="icon-box"><i class="fas fa-user-shield"></i></div>
+                      <div class="menu-title">จัดการการตรวจประวัติ</div>
+                      <div class="menu-desc">ดูแลข้อมูลประวัติใหม่ (Master)<br>และต่ออายุประวัติรายปี (Annual)</div>
+                  </a>
+              </div>
+
+              <!-- 4. Account Verify -->
+              <div class="col-md-6 col-lg-4 col-xl-3">
+                  <a href="<?= ScriptApp.getService().getUrl() ?>?page=account_verify" class="card menu-card menu-account">
+                      <div class="icon-box"><i class="fas fa-search-dollar"></i></div>
+                      <div class="menu-title">กระทบยอดบัญชี</div>
+                      <div class="menu-desc">อัปโหลดตรวจสอบสถานะผู้ให้บริการ<br>แบบกลุ่ม (Account Verification)</div>
+                  </a>
+              </div>
+
+              <!-- 5. Fast Report -->
+              <div class="col-md-6 col-lg-4 col-xl-3">
+                  <a href="<?= ScriptApp.getService().getUrl() ?>?page=fast_report" class="card menu-card menu-report">
+                      <div class="icon-box"><i class="fas fa-chart-line"></i></div>
+                      <div class="menu-title">Fast Report</div>
+                      <div class="menu-desc">แดชบอร์ดสรุปผลภาพรวม<br>และสถิติการดำเนินงาน</div>
+                  </a>
+              </div>
+
+              <!-- 6. Config (Admin Only) -->
+              <div class="col-md-6 col-lg-4 col-xl-3 d-none" id="menu-config-card">
+                  <a href="<?= ScriptApp.getService().getUrl() ?>?page=config" class="card menu-card menu-config">
+                      <div class="icon-box"><i class="fas fa-cogs"></i></div>
+                      <div class="menu-title">ตั้งค่าระบบ</div>
+                      <div class="menu-desc">จัดการตัวเลือก (Dropdowns)<br>และสิทธิ์ผู้ใช้งาน (Admin Only)</div>
+                  </a>
+              </div>
+
+          </div>
+      </div>
+  </div>
+
+  <!-- Scripts -->
+  <?!= include('_Scripts'); ?>
+  
+  <script>
+    // Extra script specifically for Home page to show/hide config card
+    document.addEventListener('DOMContentLoaded', function() {
+        // Update Title via JS to be sure
+        document.getElementById('pageTitle').textContent = "หน้าหลัก (Dashboard)";
+        document.getElementById('pageSubtitle').textContent = "เมนูหลักของระบบ";
+        
+        google.script.run.withSuccessHandler(res => {
+            if(res.isAdmin) {
+                document.getElementById('menu-config-card').classList.remove('d-none');
+            }
+        }).getClientConfig();
+    });
+  </script>
+
+</body>
+</html>
